@@ -1,0 +1,178 @@
+- hosts: 127.0.0.1
+  connection: local
+  user: vagrant
+  vars:
+    mysql_root_password: 'user'
+    git_username: ralphreid
+    git_email: "ralph.reid@pod-point.com"
+    mysql_main_user_username: laravel
+    mysql_main_database: laravel
+    mysql_main_user_password: laravel
+    projects_root: /project
+    project_root: /project/laravel
+    git_repo: ralphreid/hola-mundo-laravel
+    git_branch_checkout: master
+  tasks:
+
+  - name: "GIT: Install"
+    apt: state=present pkg=git
+    sudo: true
+
+  - name: "GIT: Username and Password"
+    shell: git config --global user.name {{git_username}} ; git config --global user.email {{git_email}}
+
+  # Comment if using mac
+  - name: "SSH: Keys"
+    shell: "mkdir ~/.ssh; touch ~/.ssh/known_hosts; cp /vagrant/id_rsa.pub ~/.ssh/ ; cp /vagrant/id_rsa ~/.ssh ; chmod 700 ~/.ssh ; chmod 600 ~/.ssh/*"
+  # Comment ABOVE if using mac
+
+  - name: "SSH: Add GitHub Known"
+    shell: ssh-keyscan -H github.com > ~/.ssh/known_hosts
+
+ - name: "VIM: Install"
+    apt: state=present pkg=vim
+    sudo: true
+
+  - name: "MySQL: Setup Root U/P"
+    shell: echo mysql-server-5.5 mysql-server/root_password password {{mysql_root_password}} | debconf-set-selections; echo mysql-server-5.5 mysql-server/root_password_again password {{mysql_root_password}} | debconf-set-selections; 
+    sudo: true
+
+  - name: "MySQL: Install"
+    apt: state=present pkg=mysql-server
+    sudo: true
+
+  - name: "MySQL: Python Module (for creation import)"
+    apt: state=present pkg=python-mysqldb
+    sudo: true
+
+  - name: "MySQL: Create Database"
+    mysql_db: name={{mysql_main_database}} state=present login_user=root login_password={{mysql_root_password}}
+
+  - name: "MySQL: Create User"
+    mysql_user: name={{mysql_main_user_username}} password={{mysql_main_user_password}} priv={{mysql_main_database}}.*:ALL state=present login_user=root login_password={{mysql_root_password}}
+
+  - name: "Apt-Get Update"
+    shell: apt-get update
+    sudo: true
+
+  - name: "Apache2: Install"
+    apt: state=present pkg=apache2
+    sudo: true
+
+  - name: "Apache2: Webroot"
+    shell: rm -rf /var/www; ln -fs {{project_root}}/web /var/www
+    sudo: true
+
+  - name: "Apache2: Mod Rewrite"
+    shell: sudo a2enmod rewrite
+    sudo: true
+    notify: "Apache2: Restart"
+
+  - name: "Apache2: Allow Redirects"
+    lineinfile: dest=/etc/apache2/sites-available/default regexp="AllowOverride None" line="AllowOverride All"
+    sudo: true
+
+  - name: "PHP5: CLI Install"
+    apt: state=present pkg=php5-cli
+    sudo: true
+
+  - name: "PHP5: Apache Module"
+    apt: state=present pkg=libapache2-mod-php5
+    sudo: true
+
+  - name: "PHP5: Mysql Driver"
+    apt: state=present pkg=php5-mysql
+    sudo: true
+    notify: "Apache2: Restart"
+
+  - name: "PHP5: GD Library"
+    apt: state=present pkg=php5-gd
+    sudo: true
+    notify: "Apache2: Restart"
+
+  - name: "curl: Install"
+    apt: state=present pkg=curl
+    sudo: true
+
+  - name: "unzip: Install"
+    apt: state=present pkg=unzip
+    sudo: true
+
+  - name: "openssl: Install"
+    apt: state=present pkg=openssl
+    sudo: true
+
+  - name: "mycrypt: Install"
+    apt: state=present pkg=mycrypt
+    sudo: true
+
+  - name: "Project Root"
+    sudo: true
+    file: path={{projects_root}} owner=vagrant group=vagrant mode=0755 state=directory
+
+  - name: "PHP: Install Composer"
+    shell: "cd {{project_root}} ; curl -sS https://getcomposer.org/installer | php"
+
+  - name: "Code: Checkout"
+    git: dest={{project_root}} repo="git@github.com:{{git_repo}}" version={{git_branch_checkout}}
+
+  - name: "Samba: Install"
+    apt: state=present pkg=samba
+    sudo: true
+
+  - name: "Samba: Configure Share (2)"
+    sudo: true
+    lineinfile: dest=/etc/samba/smb.conf line="[project]" insertafter=EOF
+    notify: "Samba: Restart"
+
+  - name: "Samba: Configure Share (3)"
+    sudo: true
+    lineinfile: dest=/etc/samba/smb.conf
+      line="path = {{projects_root}}"
+      insertafter="\[project\].*"
+    notify: "Samba: Restart"
+
+  - name: "Samba: Configure Share (4)"
+    sudo: true
+    lineinfile: dest=/etc/samba/smb.conf line="browsable = yes" insertafter="\[project\].*"
+    notify: "Samba: Restart"
+
+  - name: "Samba: Configure Share (5)"
+    sudo: true
+    lineinfile: dest=/etc/samba/smb.conf line="guest ok = yes" insertafter="\[project\].*"
+    notify: "Samba: Restart"
+
+
+  - name: "Samba: Configure Share (6)"
+    sudo: true
+    lineinfile: dest=/etc/samba/smb.conf line="create mask = 0755" insertafter="\[project\].*"
+    notify: "Samba: Restart"
+
+
+  - name: "Samba: Configure Share (7)"
+    sudo: true
+    lineinfile: dest=/etc/samba/smb.conf line="force user = vagrant" insertafter="\[project\].*"
+    notify: "Samba: Restart"
+
+
+  - name: "Samba: Configure Share (8)"
+    sudo: true
+    lineinfile: dest=/etc/samba/smb.conf line="force group = vagrant" insertafter="\[project\].*"
+    notify: "Samba: Restart"
+
+
+  - name: "Samba: Configure Share (9)"
+    sudo: true
+    lineinfile: dest=/etc/samba/smb.conf line="directory mask = 0755" insertafter="\[project\].*"
+    notify: "Samba: Restart"
+
+  - name: "Samba: Configure Share (10)"
+    sudo: true
+    lineinfile: dest=/etc/samba/smb.conf line="read only = 0755" insertafter="\[project\].*"
+    notify: "Samba: Restart"
+
+  handlers:
+
+  - name: "Apache2: Restart"
+    shell: service apache2 restart
+    sudo: true
