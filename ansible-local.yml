@@ -12,7 +12,12 @@
     project_root: /project/laravel
     git_repo: ralphreid/hola-mundo-laravel
     git_branch_checkout: master
+
   tasks:
+
+  - name: "Apt-Get Update"
+    shell: apt-get update
+    sudo: true
 
   - name: "GIT: Install"
     apt: state=present pkg=git
@@ -29,7 +34,7 @@
   - name: "SSH: Add GitHub Known"
     shell: ssh-keyscan -H github.com > ~/.ssh/known_hosts
 
- - name: "VIM: Install"
+  - name: "VIM: Install"
     apt: state=present pkg=vim
     sudo: true
 
@@ -51,10 +56,6 @@
   - name: "MySQL: Create User"
     mysql_user: name={{mysql_main_user_username}} password={{mysql_main_user_password}} priv={{mysql_main_database}}.*:ALL state=present login_user=root login_password={{mysql_root_password}}
 
-  - name: "Apt-Get Update"
-    shell: apt-get update
-    sudo: true
-
   - name: "Apache2: Install"
     apt: state=present pkg=apache2
     sudo: true
@@ -67,10 +68,6 @@
     shell: sudo a2enmod rewrite
     sudo: true
     notify: "Apache2: Restart"
-
-  - name: "Apache2: Allow Redirects"
-    lineinfile: dest=/etc/apache2/sites-available/default regexp="AllowOverride None" line="AllowOverride All"
-    sudo: true
 
   - name: "PHP5: CLI Install"
     apt: state=present pkg=php5-cli
@@ -102,8 +99,12 @@
     apt: state=present pkg=openssl
     sudo: true
 
-  - name: "mycrypt: Install"
-    apt: state=present pkg=mycrypt
+  - name: "mcrypt: Install"
+    apt: state=present pkg=mcrypt
+    sudo: true
+
+  - name: "php5-json: Install"
+    apt: state=present pkg=php5-json
     sudo: true
 
   - name: "Project Root"
@@ -113,8 +114,11 @@
   - name: "PHP: Install Composer"
     shell: "cd {{project_root}} ; curl -sS https://getcomposer.org/installer | php"
 
-  - name: "Code: Checkout"
-    git: dest={{project_root}} repo="git@github.com:{{git_repo}}" version={{git_branch_checkout}}
+  - name: "PHP: Install Composer Packages"
+    shell: "cd {{project_root}} ; php composer.phar install --dev"
+
+  # - name: "Code: Checkout"
+  #   git: dest={{project_root}} repo="git@github.com:{{git_repo}}" version={{git_branch_checkout}}
 
   - name: "Samba: Install"
     apt: state=present pkg=samba
@@ -175,4 +179,8 @@
 
   - name: "Apache2: Restart"
     shell: service apache2 restart
+    sudo: true
+
+  - name: "Samba: Restart"
+    service: name=samba state=restarted
     sudo: true
