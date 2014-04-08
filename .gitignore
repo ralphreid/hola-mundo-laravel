@@ -3,3 +3,7 @@ Thumbs.db
 id_rsa.pub
 id_rsa
 .vagrant
+composer
+/composer.lock
+/composer.phar
+vendor
